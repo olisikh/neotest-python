@@ -109,8 +109,35 @@ M.treesitter_queries = [[
     )
   ]]
 
-M.get_root =
-    lib.files.match_root_pattern("pyproject.toml", "setup.cfg", "mypy.ini", "pytest.ini", "setup.py")
+-- Function to get the root directory of the project
+M.get_root = function()
+  local root = lib.files.match_root_pattern("pyproject.toml", "setup.cfg", "mypy.ini", "pytest.ini", "setup.py")()
+  
+  -- Check if in git repository
+  local git_root = lib.process.run({ "git", "rev-parse", "--show-toplevel" }, {stdout = true, stderr = true})
+  if git_root then
+    git_root = git_root:gsub("\n", "")
+    if git_root ~= "" then
+      root = git_root
+    end
+  end
+  
+  return root
+end
+
+-- Function to get the config file path
+M.get_config = function()
+  local root = M.get_root()
+  local config_files = {"pyproject.toml", "setup.cfg", "mypy.ini", "pytest.ini", "setup.py"}
+  
+  for _, config_file in ipairs(config_files) do
+    local config_path = Path:new(root, config_file).filename
+    if lib.files.exists(config_path) then
+      return config_path
+    end
+  end
+  return nil
+end
 
 ---@return string
 function M.get_script_path()
